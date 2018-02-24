@@ -1,0 +1,199 @@
+/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 4; tab-width: 4 -*-  */
+/*
+ * eacman.cc
+ * Copyright (C) 2018 Ivan Avalos <ivan.avalos.diaz@hotmail.com>
+ *
+ * eac-pc is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * eac-pc is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "eacman.h"
+
+std::string Eacman::transpile (std::vector<std::string> input){
+
+	std::vector<std::string> lines = removeComments(input);
+	
+	// Divide output
+	std::vector<std::string> a; // Before @;
+	std::vector<std::string> b; // Inside @;
+	std::vector<std::string> c; // After @;
+
+	bool where = false; // false = before | true = after
+
+	bool funcRecollect = false;
+	std::vector<std::string> funcRecollector;
+
+	for(int i=0;i<lines.size();i++) {
+		std::string line = trimln(lines[i]);
+
+		if(line == "@;") {
+			where = true;
+			continue;
+		}
+
+		// DEBUG SEGMENTATION FAULT
+		std::cout << "[Yo! " << i << ": " << line << "]" << std::endl;
+
+		// Check if line contains EaC
+		if(line[0] == '@') {
+			std::string eac = line.substr(1, line.size());
+
+			// Section init
+			if(eac[0] == '[') {
+				// Find last '"'
+				size_t last = eac.rfind('"');
+				
+				std::string comment = "/**[ " +
+					eac.substr(2, last) +  " ]**/";
+				if(!where)
+					a.push_back(comment);
+				else
+					c.push_back(comment);
+			}
+
+			// Function init
+			if(eac[0] == '^' && eac[1] != '}') {
+				funcRecollect = true;
+				
+				// Format initialization
+				std::vector<std::string> cDef =
+					split(eac.substr(1, eac.size()-3), '|');
+
+				// Add to recollect
+				funcRecollector
+					.push_back(trimln(cDef[2]) + " " +
+					           trimln (cDef[0]) + "(" +
+					           trimln (cDef[1]) + ") {");
+			}
+
+			// Function end
+			if(eac == "^}") {
+				funcRecollect = false;
+				funcRecollector.push_back("}");
+
+				// Append to @;
+				for(int j=0;j<funcRecollector.size();j++) {
+					b.push_back(funcRecollector[j]);
+				}
+
+				funcRecollector.clear();
+			}
+		} else {
+
+			// If recollect is enabled, then, recollect!
+			if(funcRecollect) funcRecollector.push_back(lines[i]);
+			else {
+
+				if(!where)
+					a.push_back(lines[i]);
+				else 
+					c.push_back(lines[i]);
+			}
+		}
+	}
+
+	std::string output;
+
+	// Append "a"
+	for(int i=0;i<a.size();i++)
+		output.append(a[i] + "\n");
+
+	// Append "b"
+	for(int i=0;i<b.size();i++)
+		output.append(b[i] + "\n");
+
+	// Append "c"
+	for(int i=0;i<c.size();i++)
+		output.append(c[i] + "\n");
+
+	return output;
+}
+
+std::vector<std::string> Eacman::removeComments (std::vector<std::string> lines) {
+
+	bool isLineComment = false;
+	bool isBlockComment = false;
+
+	std::vector<std::string> output;
+
+	for(int i = 0; i < lines.size(); i++)
+	{
+		std::string line = trimln(lines[i]);
+
+		if(line.size() >= 2) {
+
+			// Skip if line comment
+			if(line.substr(0, 2) == "//")
+				isLineComment = true;
+
+			// Block comment (skip too)
+			if(line.substr(0, 2) == "/*"
+			   || line.substr(line.size()-2, line.size()) == "*/")
+				isBlockComment = true;
+		}
+
+		if(!isLineComment && !isBlockComment)
+			output.push_back(lines[i]);
+
+		// Close comment
+		if(isLineComment) isLineComment = false;
+		if(isBlockComment) {
+			if(line.size() >= 2) {
+				if(line.substr(line.size()-2, line.size()) == "*/")
+					isBlockComment = false;
+			}
+		}
+	}
+
+	return output;
+}
+
+std::string Eacman::trimln (std::string line) {
+
+	// Right trim
+	size_t first = 0;
+
+	for(int i=0;i<line.size();i++) {
+		if(line[i] == ' ' || line[i] == '\t' || line[i] == '\n') {
+			first ++;
+		} else break;
+	}
+
+	// Left trim
+	size_t last = line.size();
+
+	for(int i=line.size();i>=0;i--) {
+		if(line[i] == ' ' || line[i] == '\t' || line[i] == '\n') {
+			last ++;
+		} else break;
+	}
+
+	return line.substr(first, last);
+	
+	
+}
+
+std::vector<std::string> Eacman::split(std::string line, char delimiter) {
+
+	std::vector<std::string> tokens;
+	
+	std::string token;
+	std::istringstream tokenStream (line);
+
+	while(std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	
+	return tokens;
+}

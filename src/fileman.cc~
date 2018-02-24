@@ -1,0 +1,60 @@
+/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 4; tab-width: 4 -*-  */
+/*
+ * fileman.cc
+ * Copyright (C) 2018 Ivan Avalos <ivan.avalos.diaz@hotmail.com>
+ *
+ * eac-pc is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * eac-pc is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "fileman.h"
+
+Fileman::Fileman(std::string inpath, std::string outpath) {
+
+	if(outpath != NULL)
+		inPath = inpath;
+
+	if(outpath != NULL)
+		outPath = outpath;
+}
+
+std::vector<std::string> Fileman::readFile() {
+
+	std::vector<std::string> lines;
+
+	// Open file for read
+	std::ifstream inf(inPath.c_str());
+
+	// Read line by line
+	std::string line;
+	if(inf.is_open())
+	{
+		while(std::getline(inf, line)) {
+			lines.push_back(line);
+		}
+	} else std::cout << "Error: Cannot open file." << std::endl;
+
+	return lines;
+}
+
+void Fileman::writeFile (std::string content) {
+
+	// Open file for write
+	std::ofstream out(outPath.c_str());
+
+	// Write
+	if(out.is_open()) {
+		out << content;
+	} else std::cout << "Error: Cannot write to file." << std::endl;
+	
+}
